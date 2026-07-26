@@ -7,7 +7,7 @@ Pinnacle Text Editor is a fullscreen, distraction-free plain-text editor inspire
 The recommended installer is the `.deb` package:
 
 ```text
-pinnacle-text-editor_0.2.0_amd64.deb
+pinnacle-text-editor_0.2.1_amd64.deb
 ```
 
 1. Double-click the `.deb` file.
@@ -124,3 +124,8 @@ The installer is generated in:
 ```text
 build/jpackage/dist/
 ```
+
+
+## Linux Mint dependency compatibility
+
+The Gradle `packageDeb` task automatically adjusts the generated package so the bundled Java runtime can use either Ubuntu/Linux Mint's `libjpeg62` package or Debian's `libjpeg62-turbo` package.

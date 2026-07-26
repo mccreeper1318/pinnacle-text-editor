@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.1
+
+- Fixed Linux Mint and Ubuntu installation failing on the unavailable `libjpeg62-turbo` dependency.
+- Debian packages now accept either `libjpeg62` on Ubuntu/Mint or `libjpeg62-turbo` on Debian.
+- Added automatic dependency correction to the Gradle packaging task for future releases.
+
 ## 0.2.0 - Linux installation and in-app updates
 
 - Added a self-contained Linux `.deb` installer.

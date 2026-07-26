@@ -3,7 +3,7 @@ plugins {
 }
 
 group = "org.pinnacle"
-version = "0.2.0"
+version = "0.2.1"
 
 repositories {
     mavenCentral()
@@ -76,5 +76,22 @@ tasks.register<Exec>("packageDeb") {
             "--java-options", "-Dpinnacle.packaged=true",
             "--java-options", "-Dpinnacle.update.repository=${updateRepository.get()}"
         )
+    }
+
+    doLast {
+        val installer = layout.buildDirectory.dir("jpackage/dist").get().asFile
+            .listFiles()
+            ?.firstOrNull { it.extension == "deb" }
+            ?: error("jpackage did not create a .deb installer")
+
+        val process = ProcessBuilder(
+            "bash",
+            file("packaging/linux/fix-deb-dependencies.sh").absolutePath,
+            installer.absolutePath
+        ).inheritIO().start()
+
+        check(process.waitFor() == 0) {
+            "Failed to make the Debian package dependencies portable."
+        }
     }
 }

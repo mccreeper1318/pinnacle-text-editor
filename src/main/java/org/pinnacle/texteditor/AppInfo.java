@@ -28,7 +28,7 @@ public final class AppInfo {
                 ? null
                 : applicationPackage.getImplementationVersion();
         return manifestVersion == null || manifestVersion.isBlank()
-                ? "0.2.0-dev"
+                ? "0.2.1-dev"
                 : manifestVersion.trim();
     }
 }
