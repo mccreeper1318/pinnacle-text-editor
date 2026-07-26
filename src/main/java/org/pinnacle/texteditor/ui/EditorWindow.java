@@ -206,7 +206,11 @@ public final class EditorWindow {
             modified = false;
         } catch (IOException | IllegalArgumentException exception) {
             changingDocument = false;
-            Timer messageTimer = new Timer(250, event -> showMessage("Unable to open that .txt file."));
+            Timer messageTimer = new Timer(250, event -> showFileError(
+                    "Unable to open",
+                    file,
+                    exception
+            ));
             messageTimer.setRepeats(false);
             messageTimer.start();
         }
@@ -337,7 +341,7 @@ public final class EditorWindow {
                 List.of(
                         new ChoiceDialog.Choice("Yes", () -> {
                             closeOverlay();
-                            saveDocument(false, null);
+                            saveDocument(false, this::showSavedConfirmation);
                         }),
                         new ChoiceDialog.Choice("No", this::closeOverlay)
                 ),
@@ -431,7 +435,7 @@ public final class EditorWindow {
             closeOverlay();
         } catch (IOException | IllegalArgumentException exception) {
             changingDocument = false;
-            showMessage("Unable to open that .txt file.");
+            showFileError("Unable to open", file, exception);
         }
     }
 
@@ -481,8 +485,40 @@ public final class EditorWindow {
             }
         } catch (IOException | SecurityException exception) {
             pendingAction = PendingAction.NONE;
-            showMessage("Unable to save the document.");
+            showFileError("Unable to save", path, exception);
         }
+    }
+
+    private void showSavedConfirmation() {
+        if (currentFile == null) {
+            editor.requestFocusInWindow();
+            return;
+        }
+        showMessage("<html><div style='text-align:center'>Document saved successfully.<br><br>"
+                + escapeHtml(currentFile.toString())
+                + "</div></html>");
+    }
+
+    private void showFileError(String action, Path path, Exception exception) {
+        exception.printStackTrace(System.err);
+        String fileName = path == null ? "No file selected" : path.toAbsolutePath().normalize().toString();
+        String reason = exception.getMessage();
+        if (reason == null || reason.isBlank()) {
+            reason = exception.getClass().getSimpleName();
+        }
+        showMessage("<html><div style='text-align:center'>"
+                + escapeHtml(action)
+                + ":<br>"
+                + escapeHtml(fileName)
+                + "<br><br>Reason: "
+                + escapeHtml(reason)
+                + "</div></html>");
+    }
+
+    private String escapeHtml(String value) {
+        return value.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;");
     }
 
     private void createNewDocument() {

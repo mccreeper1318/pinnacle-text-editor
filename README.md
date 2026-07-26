@@ -7,7 +7,7 @@ Pinnacle Text Editor is a fullscreen, distraction-free plain-text editor inspire
 The recommended installer is the `.deb` package:
 
 ```text
-pinnacle-text-editor_0.2.1_amd64.deb
+pinnacle-text-editor_0.2.2_amd64.deb
 ```
 
 1. Double-click the `.deb` file.
@@ -26,9 +26,11 @@ On Linux Mint Cinnamon, the application can be placed on the desktop by finding 
 - No title bar, menu bar, toolbar, status bar, or visible scrollbars.
 - Text wraps only when it reaches the right edge of the screen.
 - Supports normal editing, selection, copy/paste, arrow keys, Home, End, Page Up, Page Down, Backspace, and Delete.
-- Reads and writes UTF-8 `.txt` files only.
+- Reads UTF-8, UTF-16, and common Windows-1252 `.txt` files and saves documents as UTF-8.
 - Opens associated `.txt` files when launched from the file manager.
 - All editor dialogs and file browsers are custom Swing interfaces displayed inside the program.
+- Dialogs support both the original keyboard controls and normal mouse clicks/double-clicks.
+- Successful saves display the exact completed file path.
 - Warns before discarding unsaved changes.
 - Adds `.txt` automatically when saving a filename without an extension.
 - Confirms before overwriting an existing file.
@@ -49,6 +51,8 @@ On Linux Mint Cinnamon, the application can be placed on the desktop by finding 
 | F5 | Check for updates |
 | Arrow keys | Navigate text, choices, and file lists |
 | Enter | Confirm a dialog choice or open the selected item |
+| Mouse click | Select choices and use visible dialog controls |
+| Double-click | Enter a folder or open a selected `.txt` file |
 | Escape | Cancel the active dialog |
 | Tab | Switch between the folder list and filename field while saving |
 | Backspace | Move to the parent folder in a file browser |

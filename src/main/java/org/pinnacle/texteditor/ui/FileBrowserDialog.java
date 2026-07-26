@@ -11,6 +11,7 @@ import javax.swing.DefaultListCellRenderer;
 import javax.swing.DefaultListModel;
 import javax.swing.InputMap;
 import javax.swing.JComponent;
+import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JPanel;
@@ -20,12 +21,14 @@ import javax.swing.ListSelectionModel;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
+import java.awt.Cursor;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.function.Consumer;
@@ -114,6 +117,33 @@ final class FileBrowserDialog extends JPanel {
             }
         });
 
+        fileList.addListSelectionListener(event -> {
+            if (event.getValueIsAdjusting()) {
+                return;
+            }
+            FileEntry selected = fileList.getSelectedValue();
+            if (selected == null) {
+                statusLabel.setText(" ");
+            } else if (selected.type() == FileEntry.EntryType.TEXT_FILE) {
+                statusLabel.setText("Press Enter, click OPEN, or double-click to open this file.");
+            } else {
+                statusLabel.setText("Press Enter or double-click to enter this folder.");
+            }
+        });
+
+        fileList.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent event) {
+                if (event.getClickCount() == 2) {
+                    int index = fileList.locationToIndex(event.getPoint());
+                    if (index >= 0) {
+                        fileList.setSelectedIndex(index);
+                        openSelected();
+                    }
+                }
+            }
+        });
+
         JScrollPane scroll = new JScrollPane(fileList);
         scroll.setBorder(BorderFactory.createLineBorder(RetroTheme.WHITE, 1));
         scroll.getViewport().setBackground(RetroTheme.BLACK);
@@ -130,15 +160,40 @@ final class FileBrowserDialog extends JPanel {
         statusLabel.setFont(RetroTheme.MONO_SMALL);
         statusLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        JLabel help = new JLabel("↑/↓ select   Enter open   Backspace parent   Esc cancel");
+        JPanel actionRow = new JPanel();
+        actionRow.setBackground(RetroTheme.BLACK);
+        actionRow.setLayout(new BoxLayout(actionRow, BoxLayout.X_AXIS));
+        actionRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JButton openButton = createRetroButton("OPEN", this::openSelected);
+        JButton cancelButton = createRetroButton("CANCEL", cancelAction);
+        actionRow.add(openButton);
+        actionRow.add(Box.createHorizontalStrut(12));
+        actionRow.add(cancelButton);
+
+        JLabel help = new JLabel("↑/↓ select   Enter open   Double-click open   Backspace parent   Esc cancel");
         help.setForeground(RetroTheme.DIM);
         help.setFont(RetroTheme.MONO_SMALL);
         help.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         footer.add(statusLabel);
-        footer.add(Box.createVerticalStrut(5));
+        footer.add(Box.createVerticalStrut(8));
+        footer.add(actionRow);
+        footer.add(Box.createVerticalStrut(8));
         footer.add(help);
         return footer;
+    }
+
+    private JButton createRetroButton(String text, Runnable action) {
+        JButton button = new JButton(text);
+        button.setBackground(RetroTheme.BLACK);
+        button.setForeground(RetroTheme.WHITE);
+        button.setFont(RetroTheme.MONO);
+        button.setBorder(BorderFactory.createLineBorder(RetroTheme.WHITE, 1));
+        button.setFocusPainted(false);
+        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        button.addActionListener(event -> action.run());
+        return button;
     }
 
     private void installKeyBindings() {

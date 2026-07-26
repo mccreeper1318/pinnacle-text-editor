@@ -2,6 +2,7 @@ package org.pinnacle.texteditor.ui;
 
 import javax.swing.AbstractAction;
 import javax.swing.ActionMap;
+import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.InputMap;
@@ -11,18 +12,21 @@ import javax.swing.JPanel;
 import javax.swing.KeyStroke;
 import javax.swing.SwingConstants;
 import java.awt.Component;
+import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Consumer;
 
 final class ChoiceDialog extends JPanel {
     record Choice(String label, Runnable action) {
     }
 
     private final List<Choice> choices;
-    private final JLabel choicesLabel;
+    private final List<JLabel> choiceLabels = new ArrayList<>();
     private int selectedIndex;
 
     ChoiceDialog(String message, List<Choice> choices, Runnable cancelAction) {
@@ -30,7 +34,7 @@ final class ChoiceDialog extends JPanel {
         setBackground(RetroTheme.BLACK);
         setBorder(RetroTheme.dialogBorder());
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
-        setPreferredSize(new Dimension(620, 180));
+        setPreferredSize(new Dimension(700, 190));
         setFocusable(true);
         setFocusTraversalKeysEnabled(false);
 
@@ -39,19 +43,52 @@ final class ChoiceDialog extends JPanel {
         messageLabel.setFont(RetroTheme.MONO_BOLD);
         messageLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        choicesLabel = new JLabel();
-        choicesLabel.setFont(RetroTheme.MONO);
-        choicesLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        choicesLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        JPanel choicesPanel = new JPanel();
+        choicesPanel.setBackground(RetroTheme.BLACK);
+        choicesPanel.setLayout(new BoxLayout(choicesPanel, BoxLayout.X_AXIS));
+        choicesPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JLabel help = new JLabel("←/→ select   Enter confirm   Esc cancel", SwingConstants.CENTER);
+        for (int index = 0; index < this.choices.size(); index++) {
+            final int choiceIndex = index;
+            JLabel label = new JLabel(this.choices.get(index).label(), SwingConstants.CENTER);
+            label.setFont(RetroTheme.MONO);
+            label.setOpaque(true);
+            label.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            label.setBorder(BorderFactory.createEmptyBorder(4, 14, 4, 14));
+            label.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseEntered(MouseEvent event) {
+                    selectedIndex = choiceIndex;
+                    refreshChoices();
+                }
+
+                @Override
+                public void mousePressed(MouseEvent event) {
+                    selectedIndex = choiceIndex;
+                    refreshChoices();
+                }
+
+                @Override
+                public void mouseClicked(MouseEvent event) {
+                    selectedIndex = choiceIndex;
+                    choose();
+                }
+            });
+            choiceLabels.add(label);
+            choicesPanel.add(label);
+            if (index < this.choices.size() - 1) {
+                choicesPanel.add(Box.createHorizontalStrut(20));
+            }
+        }
+
+        JLabel help = new JLabel("←/→ select   Enter confirm   Esc cancel   Mouse supported", SwingConstants.CENTER);
         help.setForeground(RetroTheme.DIM);
         help.setFont(RetroTheme.MONO_SMALL);
         help.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         add(messageLabel);
         add(Box.createVerticalStrut(28));
-        add(choicesLabel);
+        add(choicesPanel);
         add(Box.createVerticalGlue());
         add(help);
 
@@ -91,29 +128,15 @@ final class ChoiceDialog extends JPanel {
     }
 
     private void refreshChoices() {
-        StringBuilder text = new StringBuilder("<html>");
-        for (int index = 0; index < choices.size(); index++) {
-            String label = escapeHtml(choices.get(index).label());
+        for (int index = 0; index < choiceLabels.size(); index++) {
+            JLabel label = choiceLabels.get(index);
             if (index == selectedIndex) {
-                text.append("<span style='background:#EBEBEB;color:#000000'>&nbsp;")
-                        .append(label)
-                        .append("&nbsp;</span>");
+                label.setBackground(RetroTheme.SELECTED_BACKGROUND);
+                label.setForeground(RetroTheme.SELECTED_FOREGROUND);
             } else {
-                text.append("<span style='color:#EBEBEB'>&nbsp;")
-                        .append(label)
-                        .append("&nbsp;</span>");
-            }
-            if (index < choices.size() - 1) {
-                text.append("&nbsp;&nbsp;&nbsp;");
+                label.setBackground(RetroTheme.BLACK);
+                label.setForeground(RetroTheme.WHITE);
             }
         }
-        text.append("</html>");
-        choicesLabel.setText(text.toString());
-    }
-
-    private String escapeHtml(String value) {
-        return value.replace("&", "&amp;")
-                .replace("<", "&lt;")
-                .replace(">", "&gt;");
     }
 }

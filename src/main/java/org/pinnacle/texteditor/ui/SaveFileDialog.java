@@ -9,6 +9,7 @@ import javax.swing.DefaultListCellRenderer;
 import javax.swing.DefaultListModel;
 import javax.swing.InputMap;
 import javax.swing.JComponent;
+import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JPanel;
@@ -19,8 +20,11 @@ import javax.swing.ListSelectionModel;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
+import java.awt.Cursor;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -116,6 +120,33 @@ final class SaveFileDialog extends JPanel {
             }
         });
 
+        directoryList.addListSelectionListener(event -> {
+            if (event.getValueIsAdjusting()) {
+                return;
+            }
+            FileEntry selected = directoryList.getSelectedValue();
+            if (selected == null) {
+                statusLabel.setText(" ");
+            } else if (selected.type() == FileEntry.EntryType.TEXT_FILE) {
+                statusLabel.setText("Press Enter or double-click to use this existing filename.");
+            } else {
+                statusLabel.setText("Press Enter or double-click to enter this folder before saving.");
+            }
+        });
+
+        directoryList.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent event) {
+                if (event.getClickCount() == 2) {
+                    int index = directoryList.locationToIndex(event.getPoint());
+                    if (index >= 0) {
+                        directoryList.setSelectedIndex(index);
+                        openSelectedEntry();
+                    }
+                }
+            }
+        });
+
         JScrollPane scroll = new JScrollPane(directoryList);
         scroll.setBorder(BorderFactory.createLineBorder(RetroTheme.WHITE, 1));
         scroll.getViewport().setBackground(RetroTheme.BLACK);
@@ -150,7 +181,18 @@ final class SaveFileDialog extends JPanel {
         statusLabel.setFont(RetroTheme.MONO_SMALL);
         statusLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        JLabel help = new JLabel("Tab switch area   ↑/↓ select   Enter open/save   Esc cancel");
+        JPanel actionRow = new JPanel();
+        actionRow.setBackground(RetroTheme.BLACK);
+        actionRow.setLayout(new BoxLayout(actionRow, BoxLayout.X_AXIS));
+        actionRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JButton saveButton = createRetroButton("SAVE", this::submitFileName);
+        JButton cancelButton = createRetroButton("CANCEL", cancelAction);
+        actionRow.add(saveButton);
+        actionRow.add(Box.createHorizontalStrut(12));
+        actionRow.add(cancelButton);
+
+        JLabel help = new JLabel("Tab switch area   ↑/↓ select   Enter open/save   Double-click folder   Esc cancel");
         help.setForeground(RetroTheme.DIM);
         help.setFont(RetroTheme.MONO_SMALL);
         help.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -158,9 +200,23 @@ final class SaveFileDialog extends JPanel {
         footer.add(fileNameRow);
         footer.add(Box.createVerticalStrut(8));
         footer.add(statusLabel);
-        footer.add(Box.createVerticalStrut(5));
+        footer.add(Box.createVerticalStrut(8));
+        footer.add(actionRow);
+        footer.add(Box.createVerticalStrut(8));
         footer.add(help);
         return footer;
+    }
+
+    private JButton createRetroButton(String text, Runnable action) {
+        JButton button = new JButton(text);
+        button.setBackground(RetroTheme.BLACK);
+        button.setForeground(RetroTheme.WHITE);
+        button.setFont(RetroTheme.MONO);
+        button.setBorder(BorderFactory.createLineBorder(RetroTheme.WHITE, 1));
+        button.setFocusPainted(false);
+        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        button.addActionListener(event -> action.run());
+        return button;
     }
 
     private void installBindings() {
@@ -173,7 +229,7 @@ final class SaveFileDialog extends JPanel {
         listActions.put("openDirectory", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent event) {
-                openSelectedDirectory();
+                openSelectedEntry();
             }
         });
         listInput.put(KeyStroke.getKeyStroke(KeyEvent.VK_BACK_SPACE, 0), "parentDirectory");
@@ -239,13 +295,20 @@ final class SaveFileDialog extends JPanel {
         }
 
         try (var stream = Files.list(currentDirectory)) {
-            List<Path> directories = stream
-                    .filter(Files::isDirectory)
-                    .sorted(Comparator.comparing(path -> path.getFileName().toString().toLowerCase()))
+            List<Path> entries = stream
+                    .filter(path -> Files.isDirectory(path)
+                            || (Files.isRegularFile(path)
+                            && path.getFileName().toString().toLowerCase().endsWith(".txt")))
+                    .sorted(Comparator
+                            .comparing((Path path) -> !Files.isDirectory(path))
+                            .thenComparing(path -> path.getFileName().toString().toLowerCase()))
                     .toList();
 
-            for (Path directory : directories) {
-                model.addElement(new FileEntry(directory, FileEntry.EntryType.DIRECTORY));
+            for (Path entry : entries) {
+                FileEntry.EntryType type = Files.isDirectory(entry)
+                        ? FileEntry.EntryType.DIRECTORY
+                        : FileEntry.EntryType.TEXT_FILE;
+                model.addElement(new FileEntry(entry, type));
             }
 
             if (!model.isEmpty()) {
@@ -257,11 +320,19 @@ final class SaveFileDialog extends JPanel {
         }
     }
 
-    private void openSelectedDirectory() {
+    private void openSelectedEntry() {
         FileEntry entry = directoryList.getSelectedValue();
         if (entry == null) {
             return;
         }
+        if (entry.type() == FileEntry.EntryType.TEXT_FILE) {
+            fileNameField.setText(entry.path().getFileName().toString());
+            focusArea = FocusArea.FILE_NAME;
+            fileNameField.requestFocusInWindow();
+            fileNameField.selectAll();
+            return;
+        }
+
         currentDirectory = entry.path().toAbsolutePath().normalize();
         loadDirectory();
     }

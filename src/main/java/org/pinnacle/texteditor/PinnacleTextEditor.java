@@ -5,6 +5,7 @@ import org.pinnacle.texteditor.ui.EditorWindow;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import java.awt.Color;
+import java.net.URI;
 import java.nio.file.Path;
 
 public final class PinnacleTextEditor {
@@ -15,11 +16,29 @@ public final class PinnacleTextEditor {
         System.setProperty("awt.useSystemAAFontSettings", "on");
         System.setProperty("swing.aatext", "true");
 
-        Path initialFile = args.length > 0 ? Path.of(args[0]) : null;
+        Path initialFile = resolveInitialFile(args);
         SwingUtilities.invokeLater(() -> {
             configureSwingDefaults();
             new EditorWindow(initialFile).open();
         });
+    }
+
+    private static Path resolveInitialFile(String[] args) {
+        if (args.length == 0 || args[0] == null || args[0].isBlank()) {
+            return null;
+        }
+
+        String argument = args[0].trim();
+        try {
+            if (argument.regionMatches(true, 0, "file:", 0, 5)) {
+                return Path.of(URI.create(argument));
+            }
+            return Path.of(argument);
+        } catch (RuntimeException exception) {
+            System.err.println("Unable to understand the requested file path: " + argument);
+            exception.printStackTrace(System.err);
+            return null;
+        }
     }
 
     private static void configureSwingDefaults() {
