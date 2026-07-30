@@ -1,5 +1,7 @@
 package org.pinnacle.texteditor.ui;
 
+import org.pinnacle.texteditor.AppInfo;
+
 import javax.swing.Action;
 import java.awt.event.ActionEvent;
 import java.util.List;
@@ -24,6 +26,21 @@ public final class MainMenuDialogSelfTest {
         invoke(dialog, "DOWN");
         invoke(dialog, "ENTER");
         require(chosen.get() == 1, "down and enter did not activate the selected menu item");
+
+        invoke(dialog, "DOWN");
+        invoke(dialog, "ENTER");
+        require(dialog.isAboutVisibleForTest(), "About PTE did not open");
+
+        List<String> aboutLines = MainMenuDialog.aboutLines();
+        require(aboutLines.equals(List.of(
+                "Pinnacle Text Editor",
+                "Created by: McCreeper1318",
+                "(C) All rights reserved",
+                "Version: PTE " + AppInfo.VERSION
+        )), "About PTE information is incorrect");
+
+        invoke(dialog, "ESCAPE");
+        require(!dialog.isAboutVisibleForTest(), "Escape did not return from About PTE to the menu");
 
         invoke(dialog, "ESCAPE");
         require(closed.get(), "Escape did not close the main menu");
