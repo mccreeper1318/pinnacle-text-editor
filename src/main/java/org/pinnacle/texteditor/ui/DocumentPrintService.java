@@ -3,6 +3,7 @@ package org.pinnacle.texteditor.ui;
 import javax.print.PrintService;
 import javax.swing.BorderFactory;
 import javax.swing.JTextArea;
+import java.awt.Color;
 import java.awt.Font;
 import java.awt.print.PageFormat;
 import java.awt.print.Paper;
@@ -33,14 +34,24 @@ final class DocumentPrintService {
     }
 
     static Printable createPrintable(String text, Font editorFont) {
+        return createPrintArea(text, editorFont).getPrintable(null, null);
+    }
+
+    static JTextArea createPrintArea(String text, Font editorFont) {
         String fontFamily = editorFont == null ? Font.MONOSPACED : editorFont.getFamily();
         JTextArea printArea = new JTextArea(text == null ? "" : text);
         printArea.setFont(new Font(fontFamily, Font.PLAIN, 11));
+        printArea.setBackground(Color.WHITE);
+        printArea.setForeground(Color.BLACK);
+        printArea.setCaretColor(Color.BLACK);
+        printArea.setSelectionColor(Color.LIGHT_GRAY);
+        printArea.setSelectedTextColor(Color.BLACK);
+        printArea.setOpaque(true);
         printArea.setLineWrap(true);
         printArea.setWrapStyleWord(true);
         printArea.setTabSize(4);
         printArea.setBorder(BorderFactory.createEmptyBorder());
-        return printArea.getPrintable(null, null);
+        return printArea;
     }
 
     static PageFormat withSafeMargins(PageFormat original) {
