@@ -1,3 +1,5 @@
+import org.gradle.api.tasks.testing.Test
+
 plugins {
     application
 }
@@ -40,13 +42,20 @@ tasks.withType<Jar>().configureEach {
     }
 }
 
-val selfTest by tasks.registering(JavaExec::class) {
+val selfTest = tasks.register<JavaExec>("selfTest") {
     group = "verification"
-    description = "Runs dependency-free regression checks for version parsing and print pagination."
+    description = "Runs dependency-free regression checks for version parsing, the Esc menu, and print pagination."
     dependsOn(tasks.named("testClasses"))
     classpath = sourceSets["test"].runtimeClasspath
     mainClass.set("org.pinnacle.texteditor.CoreBehaviorSelfTest")
     jvmArgs("-Djava.awt.headless=true")
+}
+
+tasks.named<Test>("test") {
+    // These test-source files are dependency-free self-test programs with main methods,
+    // rather than JUnit or TestNG classes. The selfTest task executes them directly.
+    // Gradle 9 otherwise fails because source files exist but no framework tests are found.
+    failOnNoDiscoveredTests.set(false)
 }
 
 tasks.named("check") {
@@ -56,7 +65,7 @@ tasks.named("check") {
 val updateRepository = providers.gradleProperty("updateRepository")
     .orElse("mccreeper1318/pinnacle-text-editor")
 
-val prepareJpackageInput by tasks.registering(Sync::class) {
+val prepareJpackageInput = tasks.register<Sync>("prepareJpackageInput") {
     dependsOn(tasks.jar)
     from(tasks.jar.flatMap { it.archiveFile })
     into(layout.buildDirectory.dir("jpackage/input"))
