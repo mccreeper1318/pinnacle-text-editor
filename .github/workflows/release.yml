@@ -1,0 +1,162 @@
+name: Build Release Package
+
+run-name: Build Pinnacle Text Editor ${{ github.event.release.tag_name || inputs.tag }}
+
+on:
+  release:
+    types:
+      - published
+
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing GitHub release tag to build
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    runs-on: ubuntu-24.04
+
+    env:
+      RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Check out release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+
+      - name: Read and validate version
+        id: version
+        shell: bash
+        run: |
+          RAW_TAG="$RELEASE_TAG"
+          VERSION="$RAW_TAG"
+
+          # Accept 0.3, v0.3, and v.0.3.
+          if [[ "$VERSION" == v.* ]]; then
+            VERSION="${VERSION#v.}"
+          elif [[ "$VERSION" == v* ]]; then
+            VERSION="${VERSION#v}"
+          fi
+
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)*(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid Pinnacle Text Editor release tag: $RAW_TAG"
+            exit 1
+          fi
+
+          BASE_VERSION="${VERSION%%-*}"
+          if [[ "$VERSION" == *-* ]]; then
+            PRERELEASE_PART="${VERSION#*-}"
+            DEBIAN_VERSION="${BASE_VERSION}~${PRERELEASE_PART//-/.}"
+            TAG_IS_PRERELEASE=true
+          else
+            DEBIAN_VERSION="$BASE_VERSION"
+            TAG_IS_PRERELEASE=false
+          fi
+
+          RELEASE_IS_PRERELEASE="$(
+            gh release view "$RAW_TAG" \
+              --json isPrerelease \
+              --jq '.isPrerelease'
+          )"
+
+          if [[ "$TAG_IS_PRERELEASE" != "$RELEASE_IS_PRERELEASE" ]]; then
+            echo "The tag and GitHub release type do not match."
+            echo "Tag: $RAW_TAG"
+            echo "Tag indicates prerelease: $TAG_IS_PRERELEASE"
+            echo "GitHub release is prerelease: $RELEASE_IS_PRERELEASE"
+            exit 1
+          fi
+
+          echo "tag=$RAW_TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "base_version=$BASE_VERSION" >> "$GITHUB_OUTPUT"
+          echo "debian_version=$DEBIAN_VERSION" >> "$GITHUB_OUTPUT"
+
+          echo "Pinnacle Text Editor version: $VERSION"
+          echo "Debian version: $DEBIAN_VERSION"
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+
+      - name: Install Debian packaging tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fakeroot
+
+      - name: Make Gradle wrapper and packaging script executable
+        run: chmod +x gradlew packaging/linux/fix-deb-dependencies.sh
+
+      - name: Run checks and build package
+        run: |
+          ./gradlew --no-daemon clean check packageDeb \
+            -PappVersion="${{ steps.version.outputs.version }}"
+
+      - name: Verify and normalize generated package
+        id: package
+        shell: bash
+        run: |
+          mapfile -t PACKAGES < <(
+            find build/jpackage/dist \
+              -maxdepth 1 \
+              -type f \
+              -name '*.deb'
+          )
+
+          if [[ "${#PACKAGES[@]}" -ne 1 ]]; then
+            echo "Expected exactly one Debian package."
+            echo "Found: ${#PACKAGES[@]}"
+            printf '%s\n' "${PACKAGES[@]}"
+            exit 1
+          fi
+
+          DEB="${PACKAGES[0]}"
+          ACTUAL_VERSION="$(dpkg-deb -f "$DEB" Version)"
+          EXPECTED_VERSION="${{ steps.version.outputs.debian_version }}"
+
+          echo "Expected Debian version: $EXPECTED_VERSION"
+          echo "Actual Debian version:   $ACTUAL_VERSION"
+
+          if [[ "$ACTUAL_VERSION" != "$EXPECTED_VERSION" ]]; then
+            echo "The package version does not match the release tag."
+            exit 1
+          fi
+
+          mkdir -p build/release
+          ASSET_NAME="Pinnacle-Text-Editor-${{ steps.version.outputs.version }}-amd64.deb"
+          ASSET_PATH="build/release/$ASSET_NAME"
+          cp "$DEB" "$ASSET_PATH"
+
+          (
+            cd build/release
+            sha256sum "$ASSET_NAME" > "$ASSET_NAME.sha256"
+          )
+
+          echo "deb=$ASSET_PATH" >> "$GITHUB_OUTPUT"
+          echo "checksum=$ASSET_PATH.sha256" >> "$GITHUB_OUTPUT"
+
+      - name: Upload release files
+        shell: bash
+        run: |
+          gh release upload \
+            "$RELEASE_TAG" \
+            "${{ steps.package.outputs.deb }}" \
+            "${{ steps.package.outputs.checksum }}" \
+            --clobber
+
+      - name: Save workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pinnacle-text-editor-${{ steps.version.outputs.version }}
+          path: build/release/*
+          if-no-files-found: error
