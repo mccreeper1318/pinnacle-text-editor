@@ -11,24 +11,37 @@ public final class AppInfo {
     }
 
     public static URI latestReleaseApi() {
-        String repository = System.getProperty(
+        return URI.create("https://api.github.com/repos/" + updateRepository() + "/releases/latest");
+    }
+
+    public static URI releasesApi() {
+        return URI.create("https://api.github.com/repos/" + updateRepository() + "/releases?per_page=30");
+    }
+
+    private static String updateRepository() {
+        return System.getProperty(
                 "pinnacle.update.repository",
                 DEFAULT_UPDATE_REPOSITORY
         ).trim();
-        return URI.create("https://api.github.com/repos/" + repository + "/releases/latest");
     }
 
     private static String resolveVersion() {
+        String configuredVersion = System.getProperty("pinnacle.app.version");
+        if (configuredVersion != null && !configuredVersion.isBlank()) {
+            return configuredVersion.trim();
+        }
+
         String packagedVersion = System.getProperty("jpackage.app-version");
         if (packagedVersion != null && !packagedVersion.isBlank()) {
             return packagedVersion.trim();
         }
+
         Package applicationPackage = AppInfo.class.getPackage();
         String manifestVersion = applicationPackage == null
                 ? null
                 : applicationPackage.getImplementationVersion();
         return manifestVersion == null || manifestVersion.isBlank()
-                ? "0.2.2-dev"
+                ? "0.3-dev"
                 : manifestVersion.trim();
     }
 }
