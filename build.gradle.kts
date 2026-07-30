@@ -7,7 +7,7 @@ plugins {
 group = "org.pinnacle"
 
 val appVersion = providers.gradleProperty("appVersion")
-    .orElse("0.3")
+    .orElse("0.3-beta.2")
     .get()
 val jpackageVersion = appVersion.substringBefore("-")
 
@@ -44,7 +44,7 @@ tasks.withType<Jar>().configureEach {
 
 val selfTest = tasks.register<JavaExec>("selfTest") {
     group = "verification"
-    description = "Runs dependency-free regression checks for version parsing, the Esc menu, and print pagination."
+    description = "Runs dependency-free regression checks for version parsing, the Esc menu, printing, and pagination."
     dependsOn(tasks.named("testClasses"))
     classpath = sourceSets["test"].runtimeClasspath
     mainClass.set("org.pinnacle.texteditor.CoreBehaviorSelfTest")
