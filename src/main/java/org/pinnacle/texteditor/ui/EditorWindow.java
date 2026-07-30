@@ -30,10 +30,14 @@ import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.awt.print.PrinterException;
+import java.awt.print.PrinterJob;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 
 public final class EditorWindow {
     private enum PendingAction {
@@ -50,6 +54,7 @@ public final class EditorWindow {
     private final TextFileService fileService = new TextFileService();
     private final UpdateService updateService = new UpdateService();
     private final UpdateInstaller updateInstaller = new UpdateInstaller();
+    private final DocumentPrintService printService = new DocumentPrintService();
     private final Path homeDirectory = Path.of(System.getProperty("user.home", "."));
 
     private Path currentFile;
@@ -104,7 +109,7 @@ public final class EditorWindow {
         editor.setSelectedTextColor(RetroTheme.BLACK);
         editor.setFont(RetroTheme.MONO);
         editor.setLineWrap(true);
-        editor.setWrapStyleWord(false);
+        editor.setWrapStyleWord(true);
         editor.setTabSize(4);
         editor.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
         editor.setFocusTraversalKeysEnabled(false);
@@ -148,13 +153,17 @@ public final class EditorWindow {
         InputMap input = root.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
         ActionMap actions = root.getActionMap();
 
-        bind(input, actions, "quit", KeyEvent.VK_F1, this::requestQuit);
-        bind(input, actions, "save", KeyEvent.VK_F2, this::requestSave);
-        bind(input, actions, "open", KeyEvent.VK_F3, this::requestOpen);
-        bind(input, actions, "new", KeyEvent.VK_F4, this::requestNew);
-        bind(input, actions, "update", KeyEvent.VK_F5, () -> checkForUpdates(true));
+        bind(input, actions, "main-menu", KeyEvent.VK_ESCAPE, this::showMainMenu);
 
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_F4, KeyEvent.ALT_DOWN_MASK), "quit");
+        actions.put("quit", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent event) {
+                if (!overlayOpen) {
+                    requestQuit();
+                }
+            }
+        });
     }
 
     private void bind(InputMap input, ActionMap actions, String name, int keyCode, Runnable action) {
@@ -312,6 +321,75 @@ public final class EditorWindow {
         } catch (IOException exception) {
             showMessage("Unable to start the update installer.");
         }
+    }
+
+    private void showMainMenu() {
+        showOverlay(new MainMenuDialog(
+                List.of(
+                        new ChoiceDialog.Choice("Save Document", () -> runMenuAction(
+                                () -> saveDocument(false, this::showSavedConfirmation)
+                        )),
+                        new ChoiceDialog.Choice("Open Document", () -> runMenuAction(this::requestOpen)),
+                        new ChoiceDialog.Choice("New Document", () -> runMenuAction(this::requestNew)),
+                        new ChoiceDialog.Choice("Print Document", () -> runMenuAction(this::requestPrint)),
+                        new ChoiceDialog.Choice("Check for Updates", () -> runMenuAction(
+                                () -> checkForUpdates(true)
+                        )),
+                        new ChoiceDialog.Choice("Exit Program", () -> runMenuAction(this::requestQuit))
+                ),
+                this::closeOverlay
+        ));
+    }
+
+    private void runMenuAction(Runnable action) {
+        closeOverlay();
+        action.run();
+    }
+
+    private void requestPrint() {
+        if (editor.getText().isEmpty()) {
+            showMessage("There is no text to print.");
+            return;
+        }
+
+        String documentName = currentFile == null
+                ? "Pinnacle Text Editor Document"
+                : currentFile.getFileName().toString();
+        PrinterJob job;
+        try {
+            job = printService.createPrintJob(editor.getText(), editor.getFont(), documentName);
+        } catch (RuntimeException exception) {
+            showMessage("Printing is unavailable: " + exception.getMessage());
+            return;
+        }
+
+        boolean accepted;
+        try {
+            accepted = job.printDialog();
+        } catch (RuntimeException exception) {
+            showMessage("Unable to open the printer dialog: " + exception.getMessage());
+            return;
+        }
+        if (!accepted) {
+            editor.requestFocusInWindow();
+            return;
+        }
+
+        showOverlay(new BusyDialog("Printing document..."));
+        CompletableFuture.runAsync(() -> {
+            try {
+                job.print();
+            } catch (PrinterException exception) {
+                throw new CompletionException(exception);
+            }
+        }).whenComplete((ignored, error) -> SwingUtilities.invokeLater(() -> {
+            closeOverlay();
+            if (error != null) {
+                showMessage("Unable to print the document: " + error.getCause().getMessage());
+            } else {
+                showMessage("Document sent to the printer.");
+            }
+        }));
     }
 
     private void requestQuit() {
