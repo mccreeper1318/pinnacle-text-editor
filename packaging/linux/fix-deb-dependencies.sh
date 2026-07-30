@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-DEB_FILE="${1:?Usage: fix-deb-dependencies.sh path/to/package.deb}"
+DEB_FILE="${1:?Usage: fix-deb-dependencies.sh path/to/package.deb app-version}"
+APP_VERSION="${2:?Usage: fix-deb-dependencies.sh path/to/package.deb app-version}"
 WORK_DIR="$(mktemp -d)"
 OUTPUT_FILE="${DEB_FILE}.fixed"
 trap 'rm -rf "$WORK_DIR" "$OUTPUT_FILE"' EXIT
@@ -14,6 +15,17 @@ CONTROL_FILE="$WORK_DIR/DEBIAN/control"
 if grep -q 'libjpeg62-turbo' "$CONTROL_FILE" && ! grep -q 'libjpeg62 | libjpeg62-turbo' "$CONTROL_FILE"; then
     sed -i 's/libjpeg62-turbo/libjpeg62 | libjpeg62-turbo/g' "$CONTROL_FILE"
 fi
+
+# Use a Debian-compatible prerelease version while retaining the full
+# application version inside the packaged Java launcher.
+BASE_VERSION="${APP_VERSION%%-*}"
+if [[ "$APP_VERSION" == *-* ]]; then
+    PRERELEASE="${APP_VERSION#*-}"
+    DEBIAN_VERSION="${BASE_VERSION}~${PRERELEASE//-/.}"
+else
+    DEBIAN_VERSION="$BASE_VERSION"
+fi
+sed -i -E "s/^Version: .*/Version: ${DEBIAN_VERSION}/" "$CONTROL_FILE"
 
 # jpackage creates the MIME association but may omit the file argument from
 # the generated desktop entry. Add %f so opening a .txt file from the desktop
