@@ -41,7 +41,7 @@ public final class AppInfo {
                 ? null
                 : applicationPackage.getImplementationVersion();
         return manifestVersion == null || manifestVersion.isBlank()
-                ? "0.3-dev"
+                ? "0.3-beta.2"
                 : manifestVersion.trim();
     }
 }
