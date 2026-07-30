@@ -1,10 +1,13 @@
 package org.pinnacle.texteditor.ui;
 
+import org.pinnacle.texteditor.AppInfo;
+
 import javax.swing.AbstractAction;
 import javax.swing.ActionMap;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
+import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.InputMap;
 import javax.swing.JLabel;
@@ -22,38 +25,65 @@ import java.util.ArrayList;
 import java.util.List;
 
 final class MainMenuDialog extends JPanel {
+    private static final String ABOUT_LABEL = "About PTE";
+
     private final List<ChoiceDialog.Choice> choices;
     private final List<JLabel> labels = new ArrayList<>();
+    private final Runnable closeAction;
     private int selectedIndex;
+    private boolean aboutVisible;
 
     MainMenuDialog(List<ChoiceDialog.Choice> choices, Runnable closeAction) {
-        this.choices = List.copyOf(choices);
+        this.closeAction = closeAction;
+        this.choices = withAboutChoice(choices);
 
         setBackground(RetroTheme.BLACK);
         setBorder(RetroTheme.dialogBorder());
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
-        setPreferredSize(new Dimension(620, 470));
+        setPreferredSize(new Dimension(620, 530));
         setFocusable(true);
         setFocusTraversalKeysEnabled(false);
 
-        JLabel title = new JLabel("PINNACLE TEXT EDITOR", SwingConstants.CENTER);
-        title.setForeground(RetroTheme.WHITE);
-        title.setFont(RetroTheme.MONO_BOLD);
-        title.setAlignmentX(Component.CENTER_ALIGNMENT);
+        installKeyBindings();
+        showMenu();
+    }
 
-        JLabel subtitle = new JLabel("MAIN MENU", SwingConstants.CENTER);
-        subtitle.setForeground(RetroTheme.DIM);
-        subtitle.setFont(RetroTheme.MONO_SMALL);
-        subtitle.setAlignmentX(Component.CENTER_ALIGNMENT);
+    private List<ChoiceDialog.Choice> withAboutChoice(List<ChoiceDialog.Choice> suppliedChoices) {
+        List<ChoiceDialog.Choice> menuChoices = new ArrayList<>(suppliedChoices);
+        ChoiceDialog.Choice about = new ChoiceDialog.Choice(ABOUT_LABEL, this::showAbout);
+
+        int exitIndex = -1;
+        for (int index = 0; index < menuChoices.size(); index++) {
+            if ("Exit Program".equals(menuChoices.get(index).label())) {
+                exitIndex = index;
+                break;
+            }
+        }
+
+        if (exitIndex >= 0) {
+            menuChoices.add(exitIndex, about);
+        } else {
+            menuChoices.add(about);
+        }
+        return List.copyOf(menuChoices);
+    }
+
+    private void showMenu() {
+        aboutVisible = false;
+        labels.clear();
+        removeAll();
+
+        JLabel title = centeredLabel("PINNACLE TEXT EDITOR", RetroTheme.MONO_BOLD, RetroTheme.WHITE);
+        JLabel subtitle = centeredLabel("MAIN MENU", RetroTheme.MONO_SMALL, RetroTheme.DIM);
 
         add(title);
         add(Box.createVerticalStrut(4));
         add(subtitle);
         add(Box.createVerticalStrut(22));
 
-        for (int index = 0; index < this.choices.size(); index++) {
+        for (int index = 0; index < choices.size(); index++) {
             final int choiceIndex = index;
-            JLabel label = new JLabel(this.choices.get(index).label(), SwingConstants.CENTER);
+            JLabel label = new JLabel(choices.get(index).label(), SwingConstants.CENTER);
             label.setFont(RetroTheme.MONO);
             label.setOpaque(true);
             label.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
@@ -82,24 +112,82 @@ final class MainMenuDialog extends JPanel {
             });
             labels.add(label);
             add(label);
-            if (index < this.choices.size() - 1) {
+            if (index < choices.size() - 1) {
                 add(Box.createVerticalStrut(6));
             }
         }
 
         add(Box.createVerticalGlue());
+        add(centeredLabel(
+                "↑/↓ select   Enter confirm   Esc close   Mouse supported",
+                RetroTheme.MONO_SMALL,
+                RetroTheme.DIM
+        ));
 
-        JLabel help = new JLabel("↑/↓ select   Enter confirm   Esc close   Mouse supported", SwingConstants.CENTER);
-        help.setForeground(RetroTheme.DIM);
-        help.setFont(RetroTheme.MONO_SMALL);
-        help.setAlignmentX(Component.CENTER_ALIGNMENT);
-        add(help);
-
-        installKeyBindings(closeAction);
+        selectedIndex = Math.min(selectedIndex, choices.size() - 1);
         refreshSelection();
+        refreshPanel();
     }
 
-    private void installKeyBindings(Runnable closeAction) {
+    private void showAbout() {
+        aboutVisible = true;
+        labels.clear();
+        removeAll();
+
+        add(centeredLabel("ABOUT PTE", RetroTheme.MONO_BOLD, RetroTheme.WHITE));
+        add(Box.createVerticalStrut(30));
+
+        for (String line : aboutLines()) {
+            add(centeredLabel(line, RetroTheme.MONO, RetroTheme.WHITE));
+            add(Box.createVerticalStrut(12));
+        }
+
+        add(Box.createVerticalGlue());
+
+        JButton backButton = new JButton("OK");
+        backButton.setBackground(RetroTheme.BLACK);
+        backButton.setForeground(RetroTheme.WHITE);
+        backButton.setFont(RetroTheme.MONO);
+        backButton.setBorder(BorderFactory.createLineBorder(RetroTheme.WHITE, 1));
+        backButton.setFocusPainted(false);
+        backButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        backButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        backButton.addActionListener(event -> showMenu());
+        add(backButton);
+        add(Box.createVerticalStrut(14));
+        add(centeredLabel("Press Enter or Esc, or click OK", RetroTheme.MONO_SMALL, RetroTheme.DIM));
+
+        refreshPanel();
+    }
+
+    static List<String> aboutLines() {
+        return List.of(
+                "Pinnacle Text Editor",
+                "Created by: McCreeper1318",
+                "(C) All rights reserved",
+                "Version: PTE " + AppInfo.VERSION
+        );
+    }
+
+    boolean isAboutVisibleForTest() {
+        return aboutVisible;
+    }
+
+    private JLabel centeredLabel(String text, java.awt.Font font, java.awt.Color color) {
+        JLabel label = new JLabel(text, SwingConstants.CENTER);
+        label.setForeground(color);
+        label.setFont(font);
+        label.setAlignmentX(Component.CENTER_ALIGNMENT);
+        return label;
+    }
+
+    private void refreshPanel() {
+        revalidate();
+        repaint();
+        requestFocusInWindow();
+    }
+
+    private void installKeyBindings() {
         InputMap input = getInputMap(JComponent.WHEN_FOCUSED);
         ActionMap actions = getActionMap();
 
@@ -108,7 +196,7 @@ final class MainMenuDialog extends JPanel {
         bind(input, actions, "LEFT", KeyEvent.VK_LEFT, () -> move(-1));
         bind(input, actions, "RIGHT", KeyEvent.VK_RIGHT, () -> move(1));
         bind(input, actions, "ENTER", KeyEvent.VK_ENTER, this::choose);
-        bind(input, actions, "ESCAPE", KeyEvent.VK_ESCAPE, closeAction);
+        bind(input, actions, "ESCAPE", KeyEvent.VK_ESCAPE, this::handleEscape);
     }
 
     private void bind(InputMap input, ActionMap actions, String name, int keyCode, Runnable action) {
@@ -122,12 +210,27 @@ final class MainMenuDialog extends JPanel {
     }
 
     private void move(int amount) {
+        if (aboutVisible) {
+            return;
+        }
         selectedIndex = Math.floorMod(selectedIndex + amount, choices.size());
         refreshSelection();
     }
 
     private void choose() {
+        if (aboutVisible) {
+            showMenu();
+            return;
+        }
         choices.get(selectedIndex).action().run();
+    }
+
+    private void handleEscape() {
+        if (aboutVisible) {
+            showMenu();
+        } else {
+            closeAction.run();
+        }
     }
 
     private void refreshSelection() {
