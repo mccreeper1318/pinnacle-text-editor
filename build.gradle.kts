@@ -3,7 +3,13 @@ plugins {
 }
 
 group = "org.pinnacle"
-version = "0.2.2"
+
+val appVersion = providers.gradleProperty("appVersion")
+    .orElse("0.3")
+    .get()
+val jpackageVersion = appVersion.substringBefore("-")
+
+version = appVersion
 
 repositories {
     mavenCentral()
@@ -30,8 +36,21 @@ tasks.withType<Jar>().configureEach {
     manifest {
         attributes["Main-Class"] = application.mainClass.get()
         attributes["Implementation-Title"] = "Pinnacle Text Editor"
-        attributes["Implementation-Version"] = project.version.toString()
+        attributes["Implementation-Version"] = appVersion
     }
+}
+
+val selfTest by tasks.registering(JavaExec::class) {
+    group = "verification"
+    description = "Runs dependency-free regression checks for version parsing and print pagination."
+    dependsOn(tasks.named("testClasses"))
+    classpath = sourceSets["test"].runtimeClasspath
+    mainClass.set("org.pinnacle.texteditor.CoreBehaviorSelfTest")
+    jvmArgs("-Djava.awt.headless=true")
+}
+
+tasks.named("check") {
+    dependsOn(selfTest)
 }
 
 val updateRepository = providers.gradleProperty("updateRepository")
@@ -58,7 +77,7 @@ tasks.register<Exec>("packageDeb") {
             "--type", "deb",
             "--name", "Pinnacle Text Editor",
             "--linux-package-name", "pinnacle-text-editor",
-            "--app-version", project.version.toString(),
+            "--app-version", jpackageVersion,
             "--vendor", "Pinnacle",
             "--description", "A fullscreen, distraction-free plain-text editor.",
             "--input", layout.buildDirectory.dir("jpackage/input").get().asFile.absolutePath,
@@ -74,6 +93,7 @@ tasks.register<Exec>("packageDeb") {
             "--license-file", file("LICENSE").absolutePath,
             "--add-modules", "java.base,java.desktop,java.net.http,java.prefs",
             "--java-options", "-Dpinnacle.packaged=true",
+            "--java-options", "-Dpinnacle.app.version=$appVersion",
             "--java-options", "-Dpinnacle.update.repository=${updateRepository.get()}"
         )
     }
@@ -81,17 +101,18 @@ tasks.register<Exec>("packageDeb") {
     doLast {
         val installer = layout.buildDirectory.dir("jpackage/dist").get().asFile
             .listFiles()
-            ?.firstOrNull { it.extension == "deb" }
-            ?: error("jpackage did not create a .deb installer")
+            ?.singleOrNull { it.extension == "deb" }
+            ?: error("jpackage did not create exactly one .deb installer")
 
         val process = ProcessBuilder(
             "bash",
             file("packaging/linux/fix-deb-dependencies.sh").absolutePath,
-            installer.absolutePath
+            installer.absolutePath,
+            appVersion
         ).inheritIO().start()
 
         check(process.waitFor() == 0) {
-            "Failed to make the Debian package dependencies portable."
+            "Failed to finalize the Debian package."
         }
     }
 }
