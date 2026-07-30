@@ -1,6 +1,8 @@
 package org.pinnacle.texteditor.ui;
 
+import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
+import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
@@ -33,6 +35,18 @@ public final class DocumentPrintServiceSelfTest {
                     .append(" that should wrap by whole words inside the page margins without being cut off.")
                     .append('\n');
         }
+
+        AtomicReference<JTextArea> printAreaReference = new AtomicReference<>();
+        SwingUtilities.invokeAndWait(() -> printAreaReference.set(DocumentPrintService.createPrintArea(
+                "Black text on white paper",
+                new Font(Font.MONOSPACED, Font.PLAIN, 20)
+        )));
+        require(Color.WHITE.equals(printAreaReference.get().getBackground()),
+                "print background must be white");
+        require(Color.BLACK.equals(printAreaReference.get().getForeground()),
+                "print text must be black");
+        require(printAreaReference.get().isOpaque(),
+                "print surface must be opaque so the white page is rendered");
 
         AtomicReference<Printable> printableReference = new AtomicReference<>();
         SwingUtilities.invokeAndWait(() -> printableReference.set(DocumentPrintService.createPrintable(
