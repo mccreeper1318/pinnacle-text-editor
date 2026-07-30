@@ -1,135 +1,200 @@
 # Pinnacle Text Editor
 
-Pinnacle Text Editor is a fullscreen, distraction-free plain-text editor inspired by classic keyboard-driven word processors.
+Pinnacle Text Editor (PTE) is a fullscreen, distraction-free plain-text editor for Linux. It is inspired by classic keyboard-driven word processors while supporting modern file handling, printing, mouse controls, and in-app updates.
 
-## Install on Linux Mint
+**Current development release:** `0.3-beta.2`
 
-The recommended installer is the `.deb` package:
+> Beta releases may contain unfinished features or defects. Back up important documents before testing a beta build.
 
-```text
-pinnacle-text-editor_0.2.2_amd64.deb
+## Features
+
+- Borderless fullscreen editing environment.
+- Black editing screen with white monospaced text and a blinking caret.
+- Whole-word wrapping at the right edge of the screen.
+- Esc-key menu for all document and application actions.
+- Keyboard and mouse support throughout menus and file dialogs.
+- Opens UTF-8, UTF-8 BOM, UTF-16 LE, UTF-16 BE, and common Windows-1252 `.txt` files.
+- Saves documents as UTF-8 plain text.
+- Opens associated `.txt` files directly from the Linux file manager.
+- Warns before unsaved changes are discarded.
+- Automatically adds the `.txt` extension when needed.
+- Confirms before overwriting an existing file.
+- Prints documents as normal black text on a white page.
+- Uses safe print margins, whole-word wrapping, and automatic multi-page pagination.
+- Checks GitHub Releases for updates from inside the editor.
+- Downloads and verifies update packages before installation.
+- Includes a self-contained Java runtime in the Linux `.deb` package.
+
+## Supported systems
+
+The packaged application is intended for 64-bit Debian-based Linux distributions, including:
+
+- Linux Mint
+- Ubuntu
+- Debian
+
+The installer bundles its own Java runtime, so Java does not need to be installed separately.
+
+## Installing a release
+
+1. Open the repository's **Releases** page.
+2. Download the `.deb` package for the desired version.
+3. Optionally download the matching `.sha256` file and verify it:
+
+   ```bash
+   sha256sum -c pinnacle-text-editor_*.deb.sha256
+   ```
+
+4. Install the package by double-clicking it and opening it with Software Manager or Package Installer.
+
+The package can also be installed from a terminal:
+
+```bash
+sudo apt install ./pinnacle-text-editor_*.deb
 ```
 
-1. Double-click the `.deb` file.
-2. Open it with Software Manager or Package Installer.
-3. Select **Install** and enter the administrator password when asked.
-4. Launch **Pinnacle Text Editor** from the application menu.
+After installation, launch **Pinnacle Text Editor** from the desktop application menu.
 
-The installer includes a private Java runtime. Java does not need to be installed separately.
+On Linux Mint Cinnamon, the application can be added to the desktop by right-clicking it in the application menu and selecting **Add to desktop**.
 
-On Linux Mint Cinnamon, the application can be placed on the desktop by finding it in the application menu, right-clicking it, and choosing **Add to desktop**.
+## Using Pinnacle Text Editor
 
-## Current features
+Press **Esc** while editing to open the main menu.
 
-- Starts in true borderless fullscreen mode.
-- Black editing screen with white monospaced text and a blinking caret.
-- No title bar, menu bar, toolbar, status bar, or visible scrollbars.
-- Text wraps only when it reaches the right edge of the screen.
-- Supports normal editing, selection, copy/paste, arrow keys, Home, End, Page Up, Page Down, Backspace, and Delete.
-- Reads UTF-8, UTF-16, and common Windows-1252 `.txt` files and saves documents as UTF-8.
-- Opens associated `.txt` files when launched from the file manager.
-- All editor dialogs and file browsers are custom Swing interfaces displayed inside the program.
-- Dialogs support both the original keyboard controls and normal mouse clicks/double-clicks.
-- Successful saves display the exact completed file path.
-- Warns before discarding unsaved changes.
-- Adds `.txt` automatically when saving a filename without an extension.
-- Confirms before overwriting an existing file.
-- Checks for updates from inside the editor shortly after startup.
-- Supports a manual update check with F5.
-- Downloads and SHA-256 verifies update packages before installing them.
-- Uses Linux's normal administrator-password prompt to install an accepted update.
-- Relaunches the editor after an update is installed.
-
-## Keyboard controls
-
-| Key | Action |
+| Menu item | Action |
 |---|---|
-| F1 | Quit |
-| F2 | Save |
-| F3 | Open a `.txt` document |
-| F4 | Create a new document |
-| F5 | Check for updates |
-| Arrow keys | Navigate text, choices, and file lists |
-| Enter | Confirm a dialog choice or open the selected item |
-| Mouse click | Select choices and use visible dialog controls |
-| Double-click | Enter a folder or open a selected `.txt` file |
-| Escape | Cancel the active dialog |
-| Tab | Switch between the folder list and filename field while saving |
-| Backspace | Move to the parent folder in a file browser |
+| Save Document | Saves the current document or asks where a new document should be saved. |
+| Open Document | Opens the built-in browser for selecting an existing `.txt` file. |
+| New Document | Clears the editor after protecting any unsaved changes. |
+| Print Document | Opens the system printer dialog and prints black text on a white page. |
+| Check for Updates | Checks the configured GitHub Releases page for a newer version. |
+| About PTE | Displays the application name, creator, copyright notice, and installed version. |
+| Exit Program | Closes the editor after protecting any unsaved changes. |
 
-## How updates work
+Press **Esc** again to close the menu without selecting anything.
 
-There is no separate launcher. Pinnacle Text Editor itself contacts the configured GitHub Releases page after startup. When a newer release exists, the editor asks whether it should be installed.
+### General controls
 
-When accepted, the editor:
+| Control | Action |
+|---|---|
+| Arrow keys | Navigate text, menu choices, and file lists. |
+| Enter | Confirm the selected choice or open the selected item. |
+| Esc | Open or close the main menu, or cancel the active dialog. |
+| Tab | Move between controls in the save dialog. |
+| Backspace | Move to the parent folder in a file browser. |
+| Mouse click | Select menu choices and dialog controls. |
+| Double-click | Enter a folder or open a selected `.txt` file. |
+| Alt+F4 | Request to exit the application. |
+
+## Printing
+
+PTE uses the system print service and printer dialog. Printed documents use:
+
+- Black text on a white page
+- 0.75-inch safe margins
+- Whole-word wrapping
+- Automatic page breaks
+- Multi-page pagination that prevents text from being cut off at the bottom
+
+A printer must already be configured in the Linux system settings.
+
+## In-app updates
+
+PTE does not use a separate update launcher. The editor itself checks the configured GitHub repository for published releases.
+
+When an update is accepted, PTE:
 
 1. Downloads the new `.deb` package.
-2. Verifies the SHA-256 digest supplied by GitHub.
+2. Verifies the package checksum.
 3. Offers to save unsaved work.
-4. Starts the normal Linux privileged package installer.
-5. Closes and relaunches itself after installation.
+4. Opens the normal Linux administrator-password prompt.
+5. Installs the package and relaunches the editor.
 
-The default update repository is:
+Manual update checks are available through **Esc → Check for Updates**.
 
-```text
-mccreeper1318/pinnacle-text-editor
-```
+## Building from source
 
-The updater will become operational after this project is published to that repository and at least one GitHub Release contains the generated `.deb` file.
+### Requirements
 
-## Publishing future updates
-
-A GitHub Actions workflow is included at:
-
-```text
-.github/workflows/release-linux.yml
-```
-
-For each release:
-
-1. Change `version` in `build.gradle.kts`, such as `0.3.0`.
-2. Commit and push the changes.
-3. Create and push a matching tag:
-
-```bash
-git tag v0.3.0
-git push origin v0.3.0
-```
-
-The workflow builds the `.deb`, creates the GitHub Release, and uploads the installer. Installed copies will detect it on their next update check.
-
-To use a different GitHub repository, build with:
-
-```bash
-./gradlew clean packageDeb -PupdateRepository=OWNER/REPOSITORY
-```
-
-## Build requirements
-
+- Linux
 - Java Development Kit 21
-- Linux with `jpackage`, `dpkg`, `dpkg-deb`, and `fakeroot`
+- `jpackage`
+- `dpkg` and `dpkg-deb`
+- `fakeroot`
+- Git
 
-The included lightweight Gradle bootstrap downloads and checksum-verifies Gradle automatically when needed.
+On Ubuntu or Linux Mint, the packaging tools can be installed with:
 
-## Run from source
+```bash
+sudo apt update
+sudo apt install openjdk-21-jdk fakeroot dpkg-dev git
+```
+
+### Clone and verify
+
+```bash
+git clone https://github.com/mccreeper1318/pinnacle-text-editor.git
+cd pinnacle-text-editor
+./gradlew --no-daemon clean check
+```
+
+The included Gradle bootstrap downloads and checksum-verifies the required Gradle distribution when necessary.
+
+### Run from source
 
 ```bash
 ./gradlew run
 ```
 
-## Build the Linux installer
+### Build the application distribution
 
 ```bash
-./gradlew clean packageDeb
+./gradlew installDist
 ```
 
-The installer is generated in:
+The runnable distribution is generated under:
+
+```text
+build/install/pinnacle-text-editor/
+```
+
+### Build the Linux installer
+
+```bash
+./gradlew clean check packageDeb
+```
+
+The `.deb` installer is generated under:
 
 ```text
 build/jpackage/dist/
 ```
 
+To build a specific application version:
 
-## Linux Mint dependency compatibility
+```bash
+./gradlew clean check packageDeb -PappVersion=0.3-beta.2
+```
 
-The Gradle `packageDeb` task automatically adjusts the generated package so the bundled Java runtime can use either Ubuntu/Linux Mint's `libjpeg62` package or Debian's `libjpeg62-turbo` package.
+To use a different repository for in-app update checks:
+
+```bash
+./gradlew clean packageDeb -PupdateRepository=OWNER/REPOSITORY
+```
+
+## Automated builds
+
+The repository includes GitHub Actions workflows for:
+
+- Compiling and verifying pushes and pull requests.
+- Building the application distribution and Debian package.
+- Uploading CI package artifacts.
+- Building published releases.
+- Generating SHA-256 checksum files.
+- Uploading installers and checksums to GitHub Releases.
+
+Release tags may use formats such as `0.3`, `v0.3`, or `v.0.3`. Prerelease versions such as `0.3-beta.2` are packaged using Debian-compatible version ordering.
+
+## License
+
+Pinnacle Text Editor is available under the [MIT License](LICENSE).
