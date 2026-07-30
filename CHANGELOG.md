@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.3-beta.2
+
+- Changed printed documents to use black text on a white page, independent of the editor's black-screen theme.
+- Added **About PTE** to the Esc menu.
+- Added an About dialog showing the application name, creator, copyright notice, and current installed version.
+- Connected the About dialog version to the Gradle/jpackage release version so it updates automatically with each build.
+- Added regression checks for printable background and text colors and About-menu behavior.
+
+## 0.3
+
+- Replaced the F1 through F5 editor actions with a keyboard-controlled Esc main menu.
+- Added Save Document, Open Document, New Document, Print Document, Check for Updates, and Exit Program menu choices.
+- Added Esc-to-close behavior for the main menu while preserving Esc cancellation in other dialogs.
+- Added direct document printing through the system printer dialog.
+- Added 0.75-inch print margins and paginated text rendering to prevent bottom-of-page clipping.
+- Changed screen wrapping from character wrapping to whole-word wrapping whenever a word fits on the next line.
+- Fixed updater version handling for `0.3`, `v0.3`, and `v.0.3` release tag formats.
+- Added a release-list fallback when GitHub's latest-release endpoint is unavailable or has no eligible release.
+- Added checksum-file support when GitHub does not provide a release asset digest.
+- Added detailed update and download failure messages.
+- Added dependency-free regression checks for version parsing, print margins, and multi-page pagination.
+- Added Build and Test and release packaging workflows adapted from PinDB.
+
 ## 0.2.2
 
 - Fixed saving documents to Desktop and other selected folders.
